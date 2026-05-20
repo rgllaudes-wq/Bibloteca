@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Biblioteca</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+<header>
+  <h1>Mi <span>Biblioteca</span></h1>
+  <div class="header-stats" id="headerStats">Cargando...</div>
+</header>
+
+<nav>
+  <button class="active" onclick="showPanel('lista')">📚 Libros</button>
+  <button onclick="showPanel('alta')">＋ Añadir</button>
+  <button onclick="showPanel('stats')">📊 Stats</button>
+  <button onclick="showPanel('importar')">⬆ Importar</button>
+</nav>
+
+<main>
+
+  <!-- LISTA -->
+  <div class="panel active" id="panel-lista">
+    <div class="search-wrap">
+      <input type="text" id="searchInput" placeholder="Buscar por título, autor, tema..." oninput="renderLista()">
+    </div>
+    <div class="filter-row">
+      <select id="filterTema" onchange="renderLista()">
+        <option value="">Todos los temas</option>
+      </select>
+      <select id="filterUbicacion" onchange="renderLista()">
+        <option value="">Todas las ubicaciones</option>
+      </select>
+    </div>
+    <div class="book-list" id="bookList"></div>
+  </div>
+
+  <!-- ALTA -->
+  <div class="panel" id="panel-alta">
+    <div class="form-card">
+      <h2 id="formTitle">Nuevo Libro</h2>
+      <input type="hidden" id="editId">
+
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="scan-btn" style="margin-bottom:0;flex:1" onclick="abrirCamara('environment')" id="scanBtn">
+          📷 Cámara trasera
+        </button>
+        <button class="scan-btn" style="margin-bottom:0;flex:1;background:linear-gradient(135deg,var(--brown),var(--gold))" onclick="abrirCamara('user')">
+          🤳 Frontal / Galería
+        </button>
+      </div>
+      <input type="file" id="cameraInput" accept="image/*" style="display:none" onchange="escanearLibro(this)">
+      <img id="scanPreview" class="scan-preview" alt="Vista previa">
+      <div class="scan-status" id="scanStatus"></div>
+
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="fTitulo" placeholder="Título del libro">
+      </div>
+      <div class="form-group">
+        <label>Autor *</label>
+        <input type="text" id="fAutor" placeholder="Apellidos, Nombre">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Editorial</label>
+          <input type="text" id="fEditorial" placeholder="">
+        </div>
+        <div class="form-group">
+          <label>Año</label>
+          <input type="number" id="fAnio" placeholder="2024" min="1400" max="2100">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tema / Género</label>
+          <input type="text" id="fTema" placeholder="Novela, Historia...">
+        </div>
+        <div class="form-group">
+          <label>Nacionalidad</label>
+          <input type="text" id="fNacionalidad" placeholder="Española, Inglesa...">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ubicación</label>
+          <input type="text" id="fUbicacion" placeholder="Salón, Dormitorio...">
+        </div>
+        <div class="form-group">
+          <label>Estante</label>
+          <input type="text" id="fEstante" placeholder="A1, B2...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Fecha de compra</label>
+        <input type="date" id="fFechaCompra">
+      </div>
+      <div class="form-group">
+        <label>Notas</label>
+        <textarea id="fNotas" placeholder="Observaciones, resumen..."></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="guardarLibro()">💾 Guardar</button>
+        <button class="btn btn-secondary" onclick="limpiarFormulario()">✕ Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="panel" id="panel-stats">
+    <div class="stats-grid" id="statsGrid"></div>
+    <h3 class="section-title">Libros por tema</h3>
+    <div class="bar-chart" id="chartTema"></div>
+    <h3 class="section-title">Libros por ubicación</h3>
+    <div class="bar-chart" id="chartUbicacion"></div>
+    <h3 class="section-title">Libros por autor (top 10)</h3>
+    <div class="bar-chart" id="chartAutor"></div>
+  </div>
+
+  <!-- IMPORTAR -->
+  <div class="panel" id="panel-importar">
+    <div class="form-card">
+      <h2>Importar / Exportar</h2>
+
+      <p style="font-size:0.85rem; color:rgba(26,18,8,0.6); margin-bottom:16px; line-height:1.6;">
+        Importa un archivo CSV con tus libros. Las columnas deben llamarse:<br>
+        <code style="background:var(--cream); padding:2px 5px; border-radius:3px; font-size:0.8rem;">TITULO, AUTOR, EDITORIAL, TEMA, NACIONALIDAD, UBICACION, ESTANTE, FECHACOMPRA, NOTAS</code>
+      </p>
+
+      <div class="import-zone" onclick="document.getElementById('csvFile').click()">
+        <div class="icon">📂</div>
+        <p>Toca para seleccionar un archivo CSV o TXT exportado desde Access</p>
+        <input type="file" id="csvFile" accept=".csv,.txt" style="display:none" onchange="importarCSV(this)">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-gold" onclick="exportarCSV()">⬇ Exportar CSV</button>
+        <button class="btn btn-secondary" onclick="exportarJSON()">⬇ Exportar JSON</button>
+      </div>
+
+      <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border);">
+        <button class="btn btn-danger" onclick="borrarTodo()" style="width:100%">🗑 Borrar todos los datos</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- FAB (solo en lista) -->
+<button class="fab" id="fab" onclick="nuevoLibro()" title="Añadir libro">＋</button>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="cerrarModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <h2 id="mTitulo"></h2>
+    <p class="modal-autor" id="mAutor"></p>
+    <div class="detail-grid" id="mGrid"></div>
+    <div id="mNotas" style="display:none">
+      <h3 class="section-title">Notas</h3>
+      <p style="font-size:0.85rem; line-height:1.6; white-space:pre-wrap;" id="mNotasText"></p>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="mEditBtn">✏️ Editar</button>
+      <button class="btn btn-danger" id="mDelBtn">🗑 Eliminar</button>
+      <button class="btn btn-secondary" onclick="cerrarModalBtn()">✕ Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

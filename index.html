@@ -5,16 +5,683 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mi Biblioteca</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F5F0E8;
+    --paper: #FDFAF4;
+    --ink: #1A1208;
+    --brown: #6B4C2A;
+    --gold: #C8963E;
+    --rust: #A8442A;
+    --sage: #5C7A5C;
+    --shadow: rgba(26,18,8,0.15);
+    --border: rgba(107,76,42,0.2);
+  }
 
-<link rel="stylesheet" href="style.css">
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  /* GITHUB SYNC */
+  .sync-bar {
+    background: var(--paper);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: rgba(26,18,8,0.5);
+  }
+  .sync-bar .sync-status { display: flex; align-items: center; gap: 6px; }
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ccc;
+    flex-shrink: 0;
+  }
+  .sync-dot.ok { background: var(--sage); }
+  .sync-dot.error { background: var(--rust); }
+  .sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* API KEY MODAL */
+  .apikey-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--ink);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    pointer-events: none;
+  }
+  .apikey-overlay[style*="flex"] {
+    pointer-events: all;
+  }
+  .apikey-box {
+    background: var(--paper);
+    border-radius: 16px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 420px;
+  }
+  .apikey-box h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+  .apikey-box p {
+    font-size: 0.82rem;
+    color: rgba(26,18,8,0.6);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+  .apikey-box input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--cream);
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .apikey-box input:focus { border-color: var(--gold); }
+  .apikey-note {
+    font-size: 0.72rem;
+    color: rgba(26,18,8,0.4);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.02em;
+  }
+
+  header h1 span {
+    color: var(--gold);
+    font-style: italic;
+  }
+
+  .header-stats {
+    font-size: 0.75rem;
+    color: rgba(245,240,232,0.6);
+    text-align: right;
+    line-height: 1.4;
+  }
+
+  /* NAV TABS */
+  nav {
+    background: var(--ink);
+    display: flex;
+    border-top: 1px solid rgba(200,150,62,0.2);
+    overflow-x: auto;
+  }
+
+  nav button {
+    flex: 1;
+    min-width: 70px;
+    padding: 10px 6px;
+    background: none;
+    border: none;
+    color: rgba(245,240,232,0.5);
+    font-family: 'Lato', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+  }
+
+  nav button.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  nav button:hover:not(.active) {
+    color: var(--cream);
+  }
+
+  /* MAIN */
+  main {
+    padding: 16px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* SEARCH BAR */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-wrap input:focus { border-color: var(--gold); }
+
+  .search-wrap::before {
+    content: '🔍';
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    pointer-events: none;
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .filter-row select {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 10px;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.8rem;
+    color: var(--ink);
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* BOOK CARD */
+  .book-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .book-card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 3px solid var(--gold);
+  }
+
+  .book-card:hover {
+    box-shadow: 0 4px 16px var(--shadow);
+    transform: translateY(-1px);
+  }
+
+  .book-card .titulo {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  .book-card .autor {
+    font-size: 0.8rem;
+    color: var(--brown);
+    margin-bottom: 6px;
+  }
+
+  .book-card .meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .tag-tema { background: rgba(92,122,92,0.15); color: var(--sage); }
+  .tag-ubicacion { background: rgba(107,76,42,0.12); color: var(--brown); }
+  .tag-estante { background: rgba(200,150,62,0.15); color: #8A6010; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(26,18,8,0.4);
+  }
+
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* FORM */
+  .form-card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .form-card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    color: var(--brown);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brown);
+    margin-bottom: 5px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color: var(--gold); }
+
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 11px 20px;
+    border: none;
+    border-radius: 7px;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary { background: var(--ink); color: var(--cream); }
+  .btn-primary:hover { background: var(--brown); }
+  .btn-danger { background: var(--rust); color: white; }
+  .btn-danger:hover { background: #8A3020; }
+  .btn-secondary { background: transparent; color: var(--brown); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--cream); }
+  .btn-gold { background: var(--gold); color: var(--ink); }
+  .btn-gold:hover { background: #A87830; }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  /* FAB */
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--ink);
+    font-size: 1.5rem;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(200,150,62,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 50;
+  }
+
+  .fab:hover { transform: scale(1.1); background: #A87830; }
+
+  /* MODAL / DETAIL VIEW */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,18,8,0.6);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--paper);
+    border-radius: 18px 18px 0 0;
+    padding: 24px 20px 32px;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+
+  .modal .modal-autor {
+    color: var(--brown);
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .detail-item label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brown);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .detail-item span {
+    font-size: 0.88rem;
+    color: var(--ink);
+  }
+
+  /* STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-card .num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+    display: block;
+  }
+
+  .stat-card .lbl {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(26,18,8,0.5);
+    margin-top: 4px;
+    display: block;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--brown);
+    margin: 20px 0 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+
+  .bar-chart { display: flex; flex-direction: column; gap: 6px; }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+  }
+
+  .bar-row .bar-label { min-width: 110px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-row .bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .bar-row .bar-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.5s; }
+  .bar-row .bar-count { min-width: 24px; text-align: right; color: var(--brown); font-weight: 700; }
+
+  /* IMPORT */
+  .import-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+
+  .import-zone:hover { border-color: var(--gold); background: rgba(200,150,62,0.05); }
+  .import-zone .icon { font-size: 2.5rem; margin-bottom: 10px; }
+  .import-zone p { font-size: 0.85rem; color: rgba(26,18,8,0.5); }
+
+  .count-badge {
+    background: var(--rust);
+    color: white;
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 4px;
+  }
+
+  /* CAMERA SCAN */
+  .scan-btn {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, var(--ink), var(--brown));
+    color: var(--cream);
+    border: none;
+    border-radius: 8px;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    transition: opacity 0.2s;
+  }
+  .scan-btn:hover { opacity: 0.85; }
+  .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .scan-preview {
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    display: none;
+    max-height: 200px;
+    object-fit: contain;
+    border: 1px solid var(--border);
+  }
+
+  .scan-status {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--brown);
+    margin-bottom: 12px;
+    min-height: 20px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--cream);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
 </head>
 <body>
 
+<!-- GITHUB CONFIG MODAL -->
+<div class="apikey-overlay" id="githubOverlay" style="display:none">
+  <div class="apikey-box">
+    <h2>☁️ Sincronización GitHub</h2>
+    <p>Los datos se guardarán en tu repositorio de GitHub automáticamente. Necesitas un Personal Access Token con permiso <strong>repo</strong>.</p>
+    <input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off">
+    <input type="text" id="ghUser" placeholder="Tu usuario de GitHub" autocomplete="off" style="margin-top:0">
+    <input type="text" id="ghRepo" placeholder="Nombre del repositorio (ej: Bibloteca)" autocomplete="off" style="margin-top:8px">
+    <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="guardarConfigGitHub()">Guardar y sincronizar</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('githubOverlay').style.display='none'">Cancelar</button>
+    <p class="apikey-note">
+      Crea el token en <strong>github.com/settings/tokens</strong><br>
+      Permiso necesario: <strong>repo</strong> — Sin expiración.<br>
+      Se guarda solo en este navegador, nunca en el código.
+    </p>
+  </div>
+</div>
+
+<!-- API KEY OVERLAY -->
+<div class="apikey-overlay" id="apikeyOverlay" style="display:none">
+  <div class="apikey-box">
+    <h2>🔑 API Key de Anthropic</h2>
+    <p>Para usar el escáner de portadas con IA necesitas una API key de Anthropic. Se guardará solo en tu móvil y nadie más podrá verla.</p>
+    <input type="password" id="apikeyInput" placeholder="sk-ant-..." autocomplete="off">
+    <button class="btn btn-primary" style="width:100%" onclick="guardarApiKey()">Guardar y continuar</button>
+    <p class="apikey-note">
+      ¿No tienes key? Créala gratis en <strong>console.anthropic.com/keys</strong><br>
+      Tu key se guarda en este navegador (localStorage), nunca en el código.
+    </p>
+  </div>
+</div>
+
 <header>
   <h1>Mi <span>Biblioteca</span></h1>
-  <div class="header-stats" id="headerStats">Cargando...</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="header-stats" id="headerStats">0 libros</div>
+    <button onclick="pedirApiKey()" title="Configurar API Key" style="background:none;border:none;cursor:pointer;font-size:1.1rem;opacity:0.6">⚙️</button>
+  </div>
 </header>
+
+<div class="sync-bar" id="syncBar">
+  <div class="sync-status">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncText">Sin configurar</span>
+  </div>
+  <button onclick="abrirConfigGitHub()" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--brown);font-family:Lato,sans-serif;padding:0">⚙️ GitHub</button>
+</div>
 
 <nav>
   <button class="active" onclick="showPanel('lista')">📚 Libros</button>
@@ -136,8 +803,8 @@
 
       <div class="import-zone" onclick="document.getElementById('csvFile').click()">
         <div class="icon">📂</div>
-        <p>Toca para seleccionar un archivo CSV o TXT exportado desde Access</p>
-        <input type="file" id="csvFile" accept=".csv,.txt" style="display:none" onchange="importarCSV(this)">
+        <p>Toca para seleccionar un archivo CSV, TXT o JSON</p>
+        <input type="file" id="csvFile" accept=".csv,.txt,.json" style="display:none" onchange="importarArchivo(this)">
       </div>
 
       <div class="btn-row">
@@ -177,7 +844,693 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="script.js"></script>
+<script>
+const DB_KEY = 'biblioteca_libros';
 
+function getLibros() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY)) || []; } catch { return []; }
+}
+
+function saveLibros(libros) {
+  localStorage.setItem(DB_KEY, JSON.stringify(libros));
+  updateHeaderStats();
+  // Auto-sync to GitHub after a short delay (only if configured)
+  const cfg = getGHConfig();
+  if (cfg.token && cfg.user && cfg.repo) {
+    clearTimeout(window._syncTimer);
+    window._syncTimer = setTimeout(() => subirDatosGitHub(), 2000);
+  }
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// PANELS
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelector(`nav button[onclick="showPanel('${name}')"]`).classList.add('active');
+  document.getElementById('fab').style.display = name === 'lista' ? 'flex' : 'none';
+  if (name === 'stats') renderStats();
+  if (name === 'lista') renderLista();
+}
+
+// HEADER STATS
+function updateHeaderStats() {
+  const libros = getLibros();
+  const temas = new Set(libros.map(l => l.tema).filter(Boolean)).size;
+  document.getElementById('headerStats').innerHTML =
+    `${libros.length} libros · ${temas} temas`;
+}
+
+// RENDER LISTA
+function renderLista() {
+  const libros = getLibros();
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const tema = document.getElementById('filterTema').value;
+  const ubic = document.getElementById('filterUbicacion').value;
+
+  // Populate filters
+  const temas = [...new Set(libros.map(l => l.tema).filter(Boolean))].sort();
+  const ubicaciones = [...new Set(libros.map(l => l.ubicacion).filter(Boolean))].sort();
+
+  const fTema = document.getElementById('filterTema');
+  const fUbic = document.getElementById('filterUbicacion');
+  const curTema = fTema.value;
+  const curUbic = fUbic.value;
+
+  fTema.innerHTML = '<option value="">Todos los temas</option>' +
+    temas.map(t => `<option value="${t}" ${t===curTema?'selected':''}>${t}</option>`).join('');
+  fUbic.innerHTML = '<option value="">Todas las ubicaciones</option>' +
+    ubicaciones.map(u => `<option value="${u}" ${u===curUbic?'selected':''}>${u}</option>`).join('');
+
+  let filtered = libros.filter(l => {
+    const matchQ = !q || [l.titulo, l.autor, l.tema, l.editorial, l.notas].some(f => f && f.toLowerCase().includes(q));
+    const matchTema = !tema || l.tema === tema;
+    const matchUbic = !ubic || l.ubicacion === ubic;
+    return matchQ && matchTema && matchUbic;
+  });
+
+  filtered.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'es'));
+
+  const list = document.getElementById('bookList');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📖</div><p>${libros.length ? 'Sin resultados para esta búsqueda' : 'Aún no hay libros. Pulsa + para añadir el primero.'}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(l => `
+    <div class="book-card" onclick="verLibro('${l.id}')">
+      <div class="titulo">${esc(l.titulo)}</div>
+      <div class="autor">${esc(l.autor || '—')}</div>
+      <div class="meta">
+        ${l.tema ? `<span class="tag tag-tema">${esc(l.tema)}</span>` : ''}
+        ${l.ubicacion ? `<span class="tag tag-ubicacion">📍 ${esc(l.ubicacion)}</span>` : ''}
+        ${l.estante ? `<span class="tag tag-estante">Est. ${esc(l.estante)}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// DETAIL MODAL
+function verLibro(id) {
+  const libros = getLibros();
+  const l = libros.find(x => x.id === id);
+  if (!l) return;
+
+  document.getElementById('mTitulo').textContent = l.titulo;
+  document.getElementById('mAutor').textContent = l.autor || '';
+
+  const fields = [
+    ['Editorial', l.editorial],
+    ['Año', l.anio],
+    ['Tema', l.tema],
+    ['Nacionalidad', l.nacionalidad],
+    ['Ubicación', l.ubicacion],
+    ['Estante', l.estante],
+    ['Fecha compra', l.fechaCompra],
+  ].filter(([,v]) => v);
+
+  document.getElementById('mGrid').innerHTML = fields.map(([label, val]) =>
+    `<div class="detail-item"><label>${label}</label><span>${esc(val)}</span></div>`
+  ).join('');
+
+  const notasDiv = document.getElementById('mNotas');
+  if (l.notas) {
+    notasDiv.style.display = 'block';
+    document.getElementById('mNotasText').textContent = l.notas;
+  } else {
+    notasDiv.style.display = 'none';
+  }
+
+  document.getElementById('mEditBtn').onclick = () => { cerrarModalBtn(); editarLibro(id); };
+  document.getElementById('mDelBtn').onclick = () => eliminarLibro(id);
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function cerrarModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) cerrarModalBtn();
+}
+function cerrarModalBtn() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+// FORM
+function nuevoLibro() {
+  limpiarFormulario();
+  showPanel('alta');
+}
+
+function limpiarFormulario() {
+  document.getElementById('editId').value = '';
+  document.getElementById('formTitle').textContent = 'Nuevo Libro';
+  ['fTitulo','fAutor','fEditorial','fAnio','fTema','fNacionalidad','fUbicacion','fEstante','fFechaCompra','fNotas']
+    .forEach(id => document.getElementById(id).value = '');
+}
+
+function editarLibro(id) {
+  const l = getLibros().find(x => x.id === id);
+  if (!l) return;
+  showPanel('alta');
+  document.getElementById('editId').value = id;
+  document.getElementById('formTitle').textContent = 'Editar Libro';
+  document.getElementById('fTitulo').value = l.titulo || '';
+  document.getElementById('fAutor').value = l.autor || '';
+  document.getElementById('fEditorial').value = l.editorial || '';
+  document.getElementById('fAnio').value = l.anio || '';
+  document.getElementById('fTema').value = l.tema || '';
+  document.getElementById('fNacionalidad').value = l.nacionalidad || '';
+  document.getElementById('fUbicacion').value = l.ubicacion || '';
+  document.getElementById('fEstante').value = l.estante || '';
+  document.getElementById('fFechaCompra').value = l.fechaCompra || '';
+  document.getElementById('fNotas').value = l.notas || '';
+}
+
+function abrirCamara(modo) {
+  const input = document.getElementById('cameraInput');
+  if (modo === 'environment') {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
+  input.click();
+}
+
+async function escanearLibro(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // Show preview
+  const preview = document.getElementById('scanPreview');
+  preview.style.display = 'block';
+  preview.src = URL.createObjectURL(file);
+
+  const btn = document.getElementById('scanBtn');
+  const status = document.getElementById('scanStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analizando imagen...';
+  status.textContent = 'La IA está leyendo los datos del libro...';
+
+  // Compress image before sending (max 1200px, quality 0.8)
+  const base64 = await new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = rej;
+    img.src = URL.createObjectURL(file);
+  });
+
+  const mediaType = 'image/jpeg';
+
+  try {
+    const apiKey = localStorage.getItem('anthropic_api_key');
+    if (!apiKey) {
+      pedirApiKey();
+      status.textContent = '⚠️ Configura tu API key primero (botón ⚙️ arriba)';
+      status.style.color = 'var(--rust)';
+      btn.disabled = false;
+      btn.innerHTML = '📷 Escanear portada';
+      return;
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mediaType, data: base64 }
+            },
+            {
+              type: 'text',
+              text: `Analiza esta imagen de un libro y extrae la información bibliográfica. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional ni markdown, con estos campos exactos:
+{
+  "titulo": "título del libro en mayúsculas tal como aparece",
+  "autor": "nombre del autor tal como aparece",
+  "editorial": "nombre de la editorial si aparece, sino cadena vacía",
+  "anio": "año de publicación si aparece como número, sino cadena vacía",
+  "coleccion": "nombre de colección o subtítulo entre paréntesis si hay, sino cadena vacía"
+}
+Si no puedes identificar claramente algún campo, déjalo como cadena vacía. No inventes datos.`
+            }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    console.log('API response:', JSON.stringify(data));
+    if (data.error) throw new Error('API: ' + data.error.message);
+    const text = data.content?.map(c => c.text || '').join('') || '';
+    console.log('Text extracted:', text);
+    const clean = text.replace(/```json|```/g, '').trim();
+    const libro = JSON.parse(clean);
+    console.log('Parsed libro:', libro);
+
+    // Fill form fields
+    if (libro.titulo) document.getElementById('fTitulo').value = libro.titulo;
+    if (libro.autor) document.getElementById('fAutor').value = libro.autor;
+    if (libro.editorial) document.getElementById('fEditorial').value = libro.editorial;
+    if (libro.anio) document.getElementById('fAnio').value = libro.anio;
+    if (libro.coleccion) {
+      const notas = document.getElementById('fNotas');
+      notas.value = notas.value ? notas.value + '\n' + libro.coleccion : libro.coleccion;
+    }
+
+    status.textContent = '✅ Datos extraídos. Revisa y completa los campos.';
+    status.style.color = 'var(--sage)';
+  } catch (err) {
+    console.error(err);
+    console.error('Error detallado:', err);
+    status.textContent = '❌ Error: ' + err.message;
+    status.style.color = 'var(--rust)';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '📷 Escanear otra portada';
+  input.value = '';
+}
+
+function guardarLibro() {
+  const titulo = document.getElementById('fTitulo').value.trim();
+  const autor = document.getElementById('fAutor').value.trim();
+  if (!titulo) { toast('El título es obligatorio'); return; }
+
+  const libros = getLibros();
+  const editId = document.getElementById('editId').value;
+
+  const libro = {
+    id: editId || genId(),
+    titulo,
+    autor,
+    editorial: document.getElementById('fEditorial').value.trim(),
+    anio: document.getElementById('fAnio').value.trim(),
+    tema: document.getElementById('fTema').value.trim(),
+    nacionalidad: document.getElementById('fNacionalidad').value.trim(),
+    ubicacion: document.getElementById('fUbicacion').value.trim(),
+    estante: document.getElementById('fEstante').value.trim(),
+    fechaCompra: document.getElementById('fFechaCompra').value,
+    notas: document.getElementById('fNotas').value.trim(),
+  };
+
+  if (editId) {
+    const idx = libros.findIndex(x => x.id === editId);
+    if (idx >= 0) libros[idx] = libro;
+    toast('Libro actualizado ✓');
+  } else {
+    libros.push(libro);
+    toast('Libro añadido ✓');
+  }
+
+  saveLibros(libros);
+  limpiarFormulario();
+  showPanel('lista');
+}
+
+function eliminarLibro(id) {
+  if (!confirm('¿Eliminar este libro?')) return;
+  const libros = getLibros().filter(x => x.id !== id);
+  saveLibros(libros);
+  cerrarModalBtn();
+  renderLista();
+  toast('Libro eliminado');
+}
+
+// STATS
+function renderStats() {
+  const libros = getLibros();
+
+  const autores = new Set(libros.map(l => l.autor).filter(Boolean)).size;
+  const temas = new Set(libros.map(l => l.tema).filter(Boolean)).size;
+  const editoriales = new Set(libros.map(l => l.editorial).filter(Boolean)).size;
+  const ubicaciones = new Set(libros.map(l => l.ubicacion).filter(Boolean)).size;
+
+  document.getElementById('statsGrid').innerHTML = [
+    [libros.length, 'Libros'],
+    [autores, 'Autores'],
+    [temas, 'Temas'],
+    [ubicaciones, 'Ubicaciones'],
+  ].map(([n, l]) => `<div class="stat-card"><span class="num">${n}</span><span class="lbl">${l}</span></div>`).join('');
+
+  renderBarChart('chartTema', libros, 'tema', 10);
+  renderBarChart('chartUbicacion', libros, 'ubicacion', 8);
+  renderBarChart('chartAutor', libros, 'autor', 10);
+}
+
+function renderBarChart(elId, libros, campo, top) {
+  const counts = {};
+  libros.forEach(l => { if (l[campo]) counts[l[campo]] = (counts[l[campo]] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, top);
+  const max = sorted[0]?.[1] || 1;
+  document.getElementById(elId).innerHTML = sorted.length
+    ? sorted.map(([k, v]) => `
+        <div class="bar-row">
+          <span class="bar-label" title="${esc(k)}">${esc(k)}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${(v/max*100).toFixed(1)}%"></div></div>
+          <span class="bar-count">${v}</span>
+        </div>`).join('')
+    : '<p style="font-size:0.82rem; color:rgba(26,18,8,0.4)">Sin datos</p>';
+}
+
+// IMPORT / EXPORT
+function importarArchivo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.name.endsWith('.json')) {
+    importarJSON(file);
+  } else {
+    importarCSV(input);
+  }
+}
+
+function importarJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const datos = JSON.parse(e.target.result);
+      if (!Array.isArray(datos)) { toast('JSON inválido — debe ser un array'); return; }
+      const libros = getLibros();
+      let added = 0;
+      datos.forEach(l => {
+        if (!l.titulo) return;
+        libros.push({
+          id: genId(),
+          titulo: l.titulo || '',
+          autor: l.autor || '',
+          editorial: l.editorial || '',
+          anio: l.anio || '',
+          tema: l.tema || '',
+          nacionalidad: l.nacionalidad || '',
+          ubicacion: l.ubicacion || '',
+          estante: l.estante || '',
+          fechaCompra: l.fechaCompra || '',
+          notas: l.notas || '',
+        });
+        added++;
+      });
+      saveLibros(libros);
+      renderLista();
+      toast(`${added} libros importados ✓`);
+    } catch(err) {
+      toast('Error al leer el JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function importarCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) { toast('Archivo vacío'); return; }
+
+    const sep = lines[0].includes(';') ? ';' : ',';
+    const firstCols = parseCSVLine(lines[0], sep);
+    // Si la primera columna tiene "TITULO" es CSV con cabecera; si es un número es TXT de Access sin cabecera
+    const hasHeader = firstCols.some(c => c.toUpperCase().includes('TITULO'));
+
+    const libros = getLibros();
+    let added = 0;
+
+    if (hasHeader) {
+      // CSV con cabecera
+      const headers = firstCols.map(h => h.toUpperCase());
+      const idx = h => headers.indexOf(h);
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i], sep);
+        const titulo = cols[idx('TITULO')]?.trim();
+        if (!titulo) continue;
+        libros.push({
+          id: genId(), titulo,
+          autor: cols[idx('AUTOR')]?.trim() || '',
+          editorial: cols[idx('EDITORIAL')]?.trim() || '',
+          anio: (cols[idx('ANIO')] || cols[idx('AÑO')] || '').trim(),
+          tema: cols[idx('TEMA')]?.trim() || '',
+          nacionalidad: cols[idx('NACIONALIDAD')]?.trim() || '',
+          ubicacion: cols[idx('UBICACION')]?.trim() || '',
+          estante: cols[idx('ESTANTE')]?.trim() || '',
+          fechaCompra: cols[idx('FECHACOMPRA')]?.trim() || '',
+          notas: cols[idx('NOTAS')]?.trim() || '',
+        });
+        added++;
+      }
+    } else {
+      // TXT sin cabecera exportado desde Access
+      // col: 0=CODIGO, 1=TITULO, 2=AUTOR, 3=EDITORIAL, 4=NACIONALIDAD,
+      //      5=vacío, 6=TEMA, 7=vacío, 8=UBICACION, 9=ESTANTE, 10=NOTAS
+      for (let i = 0; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i], sep);
+        const titulo = cols[1]?.trim();
+        if (!titulo) continue;
+        libros.push({
+          id: genId(), titulo,
+          autor: cols[2]?.trim() || '',
+          editorial: cols[3]?.trim() || '',
+          anio: '',
+          tema: cols[6]?.trim() || '',
+          nacionalidad: cols[4]?.trim() || '',
+          ubicacion: cols[8]?.trim() || '',
+          estante: cols[9]?.trim() || '',
+          fechaCompra: '',
+          notas: cols[10]?.trim() || '',
+        });
+        added++;
+      }
+    }
+
+    saveLibros(libros);
+    renderLista();
+    toast(`${added} libros importados ✓`);
+    input.value = '';
+  };
+  reader.readAsText(file, 'ISO-8859-1');
+}
+
+function parseCSVLine(line, sep = ',') {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === sep && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result.map(s => s.replace(/"/g,'').trim());
+}
+
+function exportarCSV() {
+  const libros = getLibros();
+  if (!libros.length) { toast('No hay libros para exportar'); return; }
+  const headers = ['TITULO','AUTOR','EDITORIAL','ANIO','TEMA','NACIONALIDAD','UBICACION','ESTANTE','FECHACOMPRA','NOTAS'];
+  const rows = libros.map(l => [l.titulo,l.autor,l.editorial,l.anio,l.tema,l.nacionalidad,l.ubicacion,l.estante,l.fechaCompra,l.notas]
+    .map(v => `"${(v||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  descargar(csv, 'biblioteca.csv', 'text/csv');
+  toast('CSV exportado ✓');
+}
+
+function exportarJSON() {
+  const libros = getLibros();
+  descargar(JSON.stringify(libros, null, 2), 'biblioteca.json', 'application/json');
+  toast('JSON exportado ✓');
+}
+
+function descargar(contenido, nombre, tipo) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([contenido], {type: tipo}));
+  a.download = nombre;
+  a.click();
+}
+
+function borrarTodo() {
+  if (!confirm('¿Borrar TODOS los libros? Esta acción no se puede deshacer.')) return;
+  saveLibros([]);
+  renderLista();
+  toast('Datos borrados');
+}
+
+// GITHUB SYNC
+function getGHConfig() {
+  return {
+    token: localStorage.getItem('gh_token'),
+    user: localStorage.getItem('gh_user'),
+    repo: localStorage.getItem('gh_repo'),
+  };
+}
+
+function abrirConfigGitHub() {
+  const cfg = getGHConfig();
+  document.getElementById('ghToken').value = cfg.token || '';
+  document.getElementById('ghUser').value = cfg.user || '';
+  document.getElementById('ghRepo').value = cfg.repo || '';
+  document.getElementById('githubOverlay').style.display = 'flex';
+}
+
+function guardarConfigGitHub() {
+  const token = document.getElementById('ghToken').value.trim();
+  const user = document.getElementById('ghUser').value.trim();
+  const repo = document.getElementById('ghRepo').value.trim();
+  if (!token || !user || !repo) { alert('Rellena todos los campos'); return; }
+  localStorage.setItem('gh_token', token);
+  localStorage.setItem('gh_user', user);
+  localStorage.setItem('gh_repo', repo);
+  document.getElementById('githubOverlay').style.display = 'none';
+  sincronizarGitHub();
+}
+
+function setSyncStatus(estado, texto) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  dot.className = 'sync-dot ' + estado;
+  txt.textContent = texto;
+}
+
+async function getSHAArchivo(cfg) {
+  try {
+    const url = `https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/datos.json`;
+    const r = await fetch(url, { headers: { 'Authorization': 'token ' + cfg.token } });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.sha || null;
+  } catch(e) {
+    return null;
+  }
+}
+
+async function sincronizarGitHub() {
+  const cfg = getGHConfig();
+  if (!cfg.token || !cfg.user || !cfg.repo) {
+    setSyncStatus('', 'Sin configurar — pulsa ⚙️ GitHub');
+    return;
+  }
+  setSyncStatus('syncing', 'Sincronizando...');
+  try {
+    // First try to load remote data
+    const url = `https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/datos.json`;
+    const r = await fetch(url, { headers: { 'Authorization': 'token ' + cfg.token } });
+    if (r.ok) {
+      const data = await r.json();
+      const remoto = JSON.parse(atob(data.content.replace(/\n/g,'')));
+      const local = getLibros();
+      if (remoto.length > local.length) {
+        saveLibros(remoto);
+        renderLista();
+        setSyncStatus('ok', 'Sincronizado · ' + remoto.length + ' libros');
+        toast('Datos cargados desde GitHub ✓');
+      } else {
+        await subirDatosGitHub(cfg);
+      }
+    } else if (r.status === 404) {
+      // Archivo no existe aún — lo creamos
+      setSyncStatus('syncing', 'Creando archivo en GitHub...');
+      await subirDatosGitHub(cfg);
+    } else if (r.status === 401) {
+      throw new Error('Token inválido o sin permisos. Revisa la configuración.');
+    } else {
+      const errData = await r.json().catch(() => ({}));
+      throw new Error('Error ' + r.status + ': ' + (errData.message || ''));
+    }
+  } catch(err) {
+    setSyncStatus('error', 'Error: ' + err.message);
+    console.error(err);
+    toast('❌ ' + err.message);
+  }
+}
+
+async function subirDatosGitHub(cfg) {
+  if (!cfg) cfg = getGHConfig();
+  if (!cfg.token) return;
+  const libros = getLibros();
+  const contenido = btoa(unescape(encodeURIComponent(JSON.stringify(libros, null, 2))));
+  const sha = await getSHAArchivo(cfg);
+  const body = {
+    message: 'Actualizar biblioteca · ' + new Date().toLocaleString('es'),
+    content: contenido,
+  };
+  if (sha) body.sha = sha;
+  const apiUrl = `https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/datos.json`;
+  console.log('Subiendo a:', apiUrl);
+  console.log('SHA:', sha);
+  console.log('Token starts with:', cfg.token.substring(0, 10));
+  const r = await fetch(apiUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer ' + cfg.token,
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    body: JSON.stringify(body),
+  });
+  console.log('Response status:', r.status);
+  const respData = await r.json();
+  console.log('Response:', JSON.stringify(respData).substring(0, 200));
+  if (r.ok) {
+    const n = libros.length;
+    setSyncStatus('ok', 'Guardado en GitHub · ' + n + ' libros');
+  } else {
+    throw new Error('GitHub ' + r.status + ': ' + (respData.message || JSON.stringify(respData)));
+  }
+}
+
+// API KEY
+function guardarApiKey() {
+  const key = document.getElementById('apikeyInput').value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    alert('La key debe empezar por sk-ant-');
+    return;
+  }
+  localStorage.setItem('anthropic_api_key', key);
+  document.getElementById('apikeyOverlay').style.display = 'none';
+  toast('API key guardada ✓');
+}
+
+function pedirApiKey() {
+  const current = localStorage.getItem('anthropic_api_key') || '';
+  document.getElementById('apikeyInput').value = current;
+  document.getElementById('apikeyOverlay').style.display = 'flex';
+}
+
+// INIT
+updateHeaderStats();
+renderLista();
+const _cfg = getGHConfig();
+if (_cfg.token && _cfg.user && _cfg.repo) {
+  sincronizarGitHub();
+} else {
+  setSyncStatus('', 'Sin configurar');
+}
+</script>
 </body>
 </html>

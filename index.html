@@ -573,6 +573,40 @@
     margin-left: 4px;
   }
 
+  /* AUTOCOMPLETE */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--paper);
+    border: 1px solid var(--gold);
+    border-top: none;
+    border-radius: 0 0 7px 7px;
+    max-height: 180px;
+    overflow-y: auto;
+    z-index: 500;
+    display: none;
+  }
+  .autocomplete-list.open { display: block; }
+  .autocomplete-item {
+    padding: 9px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    color: var(--ink);
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover, .autocomplete-item.selected {
+    background: rgba(200,150,62,0.1);
+    color: var(--brown);
+  }
+  .autocomplete-item em {
+    font-style: normal;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
   /* CAMERA SCAN */
   .scan-btn {
     width: 100%;
@@ -753,7 +787,11 @@
       <div class="form-row">
         <div class="form-group">
           <label>Tema / Género</label>
-          <input type="text" id="fTema" placeholder="Novela, Historia...">
+          <div class="autocomplete-wrap">
+            <input type="text" id="fTema" placeholder="Novela, Historia..." autocomplete="off"
+              oninput="acInput(this,'tema')" onblur="acBlur('acTema')" onkeydown="acKey(event,'acTema')">
+            <div class="autocomplete-list" id="acTema"></div>
+          </div>
         </div>
         <div class="form-group">
           <label>Nacionalidad</label>
@@ -763,11 +801,19 @@
       <div class="form-row">
         <div class="form-group">
           <label>Ubicación</label>
-          <input type="text" id="fUbicacion" placeholder="Salón, Dormitorio...">
+          <div class="autocomplete-wrap">
+            <input type="text" id="fUbicacion" placeholder="Salón, Dormitorio..." autocomplete="off"
+              oninput="acInput(this,'ubicacion')" onblur="acBlur('acUbicacion')" onkeydown="acKey(event,'acUbicacion')">
+            <div class="autocomplete-list" id="acUbicacion"></div>
+          </div>
         </div>
         <div class="form-group">
           <label>Estante</label>
-          <input type="text" id="fEstante" placeholder="A1, B2...">
+          <div class="autocomplete-wrap">
+            <input type="text" id="fEstante" placeholder="A1, B2..." autocomplete="off"
+              oninput="acInput(this,'estante')" onblur="acBlur('acEstante')" onkeydown="acKey(event,'acEstante')">
+            <div class="autocomplete-list" id="acEstante"></div>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -1143,6 +1189,63 @@ Si no puedes identificar claramente algún campo, déjalo como cadena vacía. No
   btn.disabled = false;
   btn.innerHTML = '📷 Escanear otra portada';
   input.value = '';
+}
+
+// AUTOCOMPLETE
+function acGetValores(campo) {
+  const libros = getLibros();
+  const vals = [...new Set(libros.map(l => l[campo]).filter(Boolean))].sort();
+  return vals;
+}
+
+function acInput(input, campo) {
+  const q = input.value.trim().toLowerCase();
+  const listId = 'ac' + campo.charAt(0).toUpperCase() + campo.slice(1);
+  const list = document.getElementById(listId);
+  const valores = acGetValores(campo);
+  const filtrados = q ? valores.filter(v => v.toLowerCase().includes(q)) : valores;
+
+  if (!filtrados.length) { list.classList.remove('open'); return; }
+
+  list.innerHTML = filtrados.map((v, i) => {
+    const highlighted = q ? v.replace(new RegExp(`(${q})`, 'gi'), '<em>$1</em>') : v;
+    return `<div class="autocomplete-item" onmousedown="acSelect('${input.id}','${v}','${listId}')">${highlighted}</div>`;
+  }).join('');
+  list.classList.add('open');
+}
+
+function acSelect(inputId, valor, listId) {
+  document.getElementById(inputId).value = valor;
+  document.getElementById(listId).classList.remove('open');
+}
+
+function acBlur(listId) {
+  setTimeout(() => {
+    const list = document.getElementById(listId);
+    if (list) list.classList.remove('open');
+  }, 150);
+}
+
+function acKey(e, listId) {
+  const list = document.getElementById(listId);
+  if (!list.classList.contains('open')) return;
+  const items = list.querySelectorAll('.autocomplete-item');
+  const selected = list.querySelector('.selected');
+  let idx = [...items].indexOf(selected);
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (selected) selected.classList.remove('selected');
+    items[Math.min(idx + 1, items.length - 1)].classList.add('selected');
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (selected) selected.classList.remove('selected');
+    items[Math.max(idx - 1, 0)].classList.add('selected');
+  } else if (e.key === 'Enter' && selected) {
+    e.preventDefault();
+    selected.dispatchEvent(new MouseEvent('mousedown'));
+  } else if (e.key === 'Escape') {
+    list.classList.remove('open');
+  }
 }
 
 function guardarLibro() {

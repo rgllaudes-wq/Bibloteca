@@ -1465,13 +1465,13 @@ function exportarCSV() {
   const rows = libros.map(l => [l.titulo,l.autor,l.editorial,l.anio,l.tema,l.nacionalidad,l.ubicacion,l.estante,l.fechaCompra,l.notas]
     .map(v => `"${(v||'').replace(/"/g,'""')}"`).join(','));
   const csv = [headers.join(','), ...rows].join('\n');
-  descargar(csv, 'biblioteca.csv', 'text/csv');
+  descargar('﻿' + csv, 'biblioteca.csv', 'text/csv;charset=utf-8');
   toast('CSV exportado ✓');
 }
 
 function exportarJSON() {
   const libros = getLibros();
-  descargar(JSON.stringify(libros, null, 2), 'biblioteca.json', 'application/json');
+  descargar('﻿' + JSON.stringify(libros, null, 2), 'biblioteca.json', 'application/json;charset=utf-8');
   toast('JSON exportado ✓');
 }
 
